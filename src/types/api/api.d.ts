@@ -113,6 +113,32 @@ declare namespace Api {
         Api.Common.CommonSearchParams
     >
 
+    /** 创建用户参数 */
+    interface CreateUserParams {
+      userName: string
+      password: string
+      nickName?: string
+      avatar?: string
+      userGender?: string
+      userPhone?: string
+      userEmail?: string
+      status?: string
+      roleIds?: number[]
+    }
+
+    /** 更新用户参数 */
+    interface UpdateUserParams {
+      userName?: string
+      password?: string
+      nickName?: string
+      avatar?: string
+      userGender?: string
+      userPhone?: string
+      userEmail?: string
+      status?: string
+      roleIds?: number[]
+    }
+
     /** 角色列表 */
     type RoleList = Api.Common.PaginatedResponse<RoleListItem>
 
@@ -131,5 +157,96 @@ declare namespace Api {
       Pick<RoleListItem, 'roleId' | 'roleName' | 'roleCode' | 'description' | 'enabled'> &
         Api.Common.CommonSearchParams
     >
+
+    /** 创建角色参数 */
+    interface CreateRoleParams {
+      roleName: string
+      roleCode: string
+      description?: string
+      enabled?: boolean
+      menuIds?: number[]
+    }
+
+    /** 更新角色参数 */
+    interface UpdateRoleParams {
+      roleName?: string
+      roleCode?: string
+      description?: string
+      enabled?: boolean
+      menuIds?: number[]
+    }
+
+    /** 角色权限配置 */
+    interface RolePermissions {
+      menuIds: number[]
+      permissionIds: number[]
+    }
+
+    /** 更新角色权限参数 */
+    interface UpdateRolePermissionsParams {
+      menuIds: number[]
+      permissionIds: number[]
+    }
+
+    /** 菜单元数据 */
+    interface MenuMeta {
+      title: string
+      icon?: string
+      isHide?: boolean
+      isHideTab?: boolean
+      keepAlive?: boolean
+      link?: string
+      isIframe?: boolean
+      isFullPage?: boolean
+      fixedTab?: boolean
+      activePath?: string
+      showBadge?: boolean
+      showTextBadge?: string
+      authList?: AuthItem[]
+    }
+
+    /** 按钮权限项 */
+    interface AuthItem {
+      id: number
+      title: string
+      authMark: string
+    }
+
+    /** 创建菜单参数 */
+    interface CreateMenuParams {
+      parentId?: number
+      name: string
+      path: string
+      component?: string
+      meta: MenuMeta
+      sortOrder?: number
+    }
+
+    /** 更新菜单参数 */
+    interface UpdateMenuParams {
+      parentId?: number
+      name?: string
+      path?: string
+      component?: string
+      meta?: Partial<MenuMeta>
+      sortOrder?: number
+    }
+
+    /** 创建按钮权限参数 */
+    interface CreateButtonPermissionParams {
+      menuId: number
+      permissionName: string
+      permissionCode: string
+      description?: string
+      sortOrder?: number
+    }
+
+    /** 更新按钮权限参数 */
+    interface UpdateButtonPermissionParams {
+      permissionName?: string
+      permissionCode?: string
+      description?: string
+      sortOrder?: number
+    }
   }
 }

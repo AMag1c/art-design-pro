@@ -77,6 +77,20 @@
       props: { placeholder: '请输入邮箱' }
     },
     {
+      label: '角色',
+      key: 'userRole',
+      type: 'select',
+      props: {
+        placeholder: '请选择角色',
+        clearable: true,
+        options: [
+          { label: '超级管理员', value: 'super_admin' },
+          { label: '管理员', value: 'admin' },
+          { label: '普通用户', value: 'user' }
+        ]
+      }
+    },
+    {
       label: '状态',
       key: 'status',
       type: 'select',

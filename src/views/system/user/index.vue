@@ -13,7 +13,33 @@
       <ArtTableHeader v-model:columns="columnChecks" :loading="loading" @refresh="refreshData">
         <template #left>
           <ElSpace wrap>
-            <ElButton @click="showDialog('add')" v-ripple>新增用户</ElButton>
+            <ElButton type="primary" @click="showDialog('add')" v-ripple>
+              <ElIcon>
+                <Plus />
+              </ElIcon>
+              新增用户
+            </ElButton>
+
+            <!-- 导出导入功能 -->
+            <ArtExcelExport
+              :data="data as any"
+              :columns="exportColumns as any"
+              filename="用户数据"
+              :auto-index="true"
+              button-text="导出Excel"
+              @export-success="handleExportSuccess"
+            />
+            <ArtExcelImport
+              @import-success="handleImportSuccess"
+              @import-error="handleImportError"
+            />
+
+            <ElButton @click="handleBatchDelete" :disabled="selectedRows.length === 0" v-ripple>
+              <ElIcon>
+                <Delete />
+              </ElIcon>
+              批量删除 ({{ selectedRows.length }})
+            </ElButton>
           </ElSpace>
         </template>
       </ArtTableHeader>
@@ -43,12 +69,15 @@
 
 <script setup lang="ts">
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
+  import ArtExcelExport from '@/components/core/forms/art-excel-export/index.vue'
+  import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import { useTable } from '@/hooks/core/useTable'
   import { fetchGetUserList } from '@/api/system-manage'
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
-  import { ElTag, ElMessageBox, ElImage } from 'element-plus'
+  import { ElTag, ElMessageBox, ElImage, ElMessage, ElIcon } from 'element-plus'
+  import { Delete, Plus } from '@element-plus/icons-vue'
   import { DialogType } from '@/types'
 
   defineOptions({ name: 'User' })
@@ -240,22 +269,95 @@
   }
 
   /**
+   * 处理选中行变化
+   */
+  const handleSelectionChange = (rows: UserListItem[]) => {
+    selectedRows.value = rows
+  }
+
+  /**
+   * 导出列配置
+   */
+  const exportColumns = computed(() => [
+    { prop: 'userName', label: '用户名' },
+    { prop: 'userGender', label: '性别' },
+    { prop: 'userPhone', label: '手机号' },
+    { prop: 'userEmail', label: '邮箱' },
+    {
+      prop: 'status',
+      label: '状态',
+      formatter: (row: UserListItem) => {
+        const config = getUserStatusConfig(row.status)
+        return config.text
+      }
+    },
+    { prop: 'createTime', label: '创建日期' }
+  ])
+
+  /**
+   * 导出成功回调
+   */
+  const handleExportSuccess = () => {
+    ElMessage.success('导出成功')
+  }
+
+  /**
+   * 导入成功回调
+   */
+  const handleImportSuccess = (data: any) => {
+    console.log('导入数据:', data)
+    ElMessage.success(`成功导入 ${data.length} 条数据`)
+    // 刷新表格数据
+    refreshData()
+  }
+
+  /**
+   * 导入失败回调
+   */
+  const handleImportError = (error: any) => {
+    console.error('导入失败:', error)
+    ElMessage.error('导入失败，请检查文件格式')
+  }
+
+  /**
+   * 批量删除
+   */
+  const handleBatchDelete = () => {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请先选择要删除的用户')
+      return
+    }
+
+    ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 个用户吗？`, '批量删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+      .then(() => {
+        // 这里应该调用批量删除API
+        console.log('批量删除用户:', selectedRows.value)
+        ElMessage.success('批量删除成功')
+        // 清空选中
+        selectedRows.value = []
+        // 刷新表格
+        refreshData()
+      })
+      .catch(() => {
+        // 用户取消
+      })
+  }
+
+  /**
    * 处理弹窗提交事件
    */
   const handleDialogSubmit = async () => {
     try {
       dialogVisible.value = false
       currentUserData.value = {}
+      // 刷新表格
+      refreshData()
     } catch (error) {
       console.error('提交失败:', error)
     }
-  }
-
-  /**
-   * 处理表格行选择变化
-   */
-  const handleSelectionChange = (selection: UserListItem[]): void => {
-    selectedRows.value = selection
-    console.log('选中行数据:', selectedRows.value)
   }
 </script>

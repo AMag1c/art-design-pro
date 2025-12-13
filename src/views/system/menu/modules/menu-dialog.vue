@@ -38,9 +38,8 @@
 
 <script setup lang="ts">
   import type { FormRules } from 'element-plus'
-  import { ElIcon, ElTooltip } from 'element-plus'
+  import { ElIcon, ElTooltip, ElMessage } from 'element-plus'
   import { QuestionFilled } from '@element-plus/icons-vue'
-  import { formatMenuTitle } from '@/utils/router'
   import type { AppRouteRecord } from '@/types/router'
   import type { FormItem } from '@/components/core/forms/art-form/index.vue'
   import ArtForm from '@/components/core/forms/art-form/index.vue'
@@ -94,6 +93,7 @@
     authLabel: string
     authIcon: string
     authSort: number
+    parentId: number // 改为父菜单ID
   }
 
   interface Props {
@@ -144,7 +144,8 @@
     authName: '',
     authLabel: '',
     authIcon: '',
-    authSort: 1
+    authSort: 1,
+    parentId: 0 // 父菜单ID
   })
 
   const rules = reactive<FormRules>({
@@ -270,8 +271,10 @@
    * 是否禁用菜单类型切换
    */
   const disableMenuType = computed(() => {
+    // 编辑模式下禁用切换
     if (isEdit.value) return true
-    if (!isEdit.value && form.menuType === 'menu' && props.lockType) return true
+    // 新增模式下，如果 lockType 为 true 则禁用切换
+    if (props.lockType) return true
     return false
   })
 
@@ -287,24 +290,38 @@
    * 加载表单数据（编辑模式）
    */
   const loadFormData = (): void => {
-    if (!props.editData) return
+    if (!props.editData) {
+      // 如果没有editData，重置为默认值
+      form.parentId = 0
+      return
+    }
 
-    isEdit.value = true
+    // 判断是否为编辑模式：有完整的权限数据则为编辑，只有 parentId 则为新增
+    const hasAuthData = props.editData.title || props.editData.authMark || props.editData.meta
+    isEdit.value = !!hasAuthData
+
+    // 处理 parentId（新增按钮权限时需要）
+    if (!hasAuthData && props.editData.parentId) {
+      form.parentId = props.editData.parentId || 0
+    } else if (!hasAuthData) {
+      // 新增顶级菜单
+      form.parentId = props.editData.parentId || 0
+    }
 
     if (form.menuType === 'menu') {
       const row = props.editData
       form.id = row.id || 0
-      form.name = formatMenuTitle(row.meta?.title || '')
+      form.name = row.meta?.title || '' // 修复：直接使用原始标题，不格式化
       form.path = row.path || ''
       form.label = row.name || ''
       form.component = row.component || ''
       form.icon = row.meta?.icon || ''
-      form.sort = row.meta?.sort || 1
+      form.sort = row.sortOrder || row.meta?.sort || 1 // 修复：使用sortOrder字段
       form.isMenu = row.meta?.isMenu ?? true
       form.keepAlive = row.meta?.keepAlive ?? false
       form.isHide = row.meta?.isHide ?? false
       form.isHideTab = row.meta?.isHideTab ?? false
-      form.isEnable = row.meta?.isEnable ?? true
+      form.isEnable = !row.meta?.isHide // 修复：isEnable与isHide相反
       form.link = row.meta?.link || ''
       form.isIframe = row.meta?.isIframe ?? false
       form.showBadge = row.meta?.showBadge ?? false
@@ -313,12 +330,15 @@
       form.activePath = row.meta?.activePath || ''
       form.roles = row.meta?.roles || []
       form.isFullPage = row.meta?.isFullPage ?? false
+      form.parentId = row.parentId || 0
     } else {
       const row = props.editData
+      form.id = row.id || 0 // 设置权限ID
+      form.parentId = row.parentId || 0 // 设置父菜单ID
       form.authName = row.title || ''
       form.authLabel = row.authMark || ''
       form.authIcon = row.icon || ''
-      form.authSort = row.sort || 1
+      form.authSort = row.meta?.sort || row.sort || 1 // 修复：正确获取排序值
     }
   }
 
@@ -331,7 +351,6 @@
     try {
       await formRef.value.validate()
       emit('submit', { ...form })
-      ElMessage.success(`${isEdit.value ? '编辑' : '新增'}成功`)
       handleCancel()
     } catch {
       ElMessage.error('表单校验失败，请检查输入')
@@ -360,7 +379,9 @@
     () => props.visible,
     (newVal) => {
       if (newVal) {
+        // 设置表单类型
         form.menuType = props.type
+
         nextTick(() => {
           if (props.editData) {
             loadFormData()
@@ -370,15 +391,5 @@
     }
   )
 
-  /**
-   * 监听菜单类型变化
-   */
-  watch(
-    () => props.type,
-    (newType) => {
-      if (props.visible) {
-        form.menuType = newType
-      }
-    }
-  )
+  // 移除监听 props.type 的 watch，避免冲突
 </script>

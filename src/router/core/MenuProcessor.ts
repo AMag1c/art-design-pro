@@ -58,6 +58,13 @@ export class MenuProcessor {
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
     const list = await fetchGetMenuList()
+
+    // 验证返回的数据
+    if (!list || !Array.isArray(list)) {
+      console.error('[MenuProcessor] 后端返回的菜单数据无效:', list)
+      return []
+    }
+
     return this.filterEmptyMenus(list)
   }
 
