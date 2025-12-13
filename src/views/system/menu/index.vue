@@ -206,9 +206,14 @@
       }
     },
     {
-      prop: 'date',
+      prop: 'updateTime',
       label: '编辑时间',
-      formatter: () => '2022-3-12 12:00:00'
+      formatter: (row: AppRouteRecord) => {
+        // 如果是按钮权限，不显示时间
+        if (isAuthButton(row)) return ''
+        // 显示更新时间，如果没有则显示创建时间
+        return (row as any).updateTime || (row as any).createTime || ''
+      }
     },
     {
       prop: 'status',

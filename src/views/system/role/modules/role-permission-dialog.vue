@@ -43,6 +43,8 @@
 <script setup lang="ts">
   import { useMenuStore } from '@/store/modules/menu'
   import { formatMenuTitle } from '@/utils/router'
+  import { fetchGetRolePermissions, fetchUpdateRolePermissions } from '@/api/system-manage'
+  import { ElMessage } from 'element-plus'
 
   type RoleListItem = Api.SystemManage.RoleListItem
 
@@ -86,6 +88,7 @@
     meta?: {
       title?: string
       authList?: Array<{
+        id?: number
         authMark: string
         title: string
         checked?: boolean
@@ -110,6 +113,7 @@
           name: `${node.name}_${auth.authMark}`,
           label: auth.title,
           authMark: auth.authMark,
+          permissionId: auth.id, // 保存原始的权限ID
           isAuth: true,
           checked: auth.checked || false
         }))
@@ -141,13 +145,83 @@
    */
   watch(
     () => props.modelValue,
-    (newVal) => {
+    async (newVal) => {
       if (newVal && props.roleData) {
-        // TODO: 根据角色加载对应的权限数据
-        console.log('设置权限:', props.roleData)
+        // 加载角色的权限数据
+        await loadRolePermissions()
       }
     }
   )
+
+  /**
+   * 加载角色权限
+   */
+  const loadRolePermissions = async () => {
+    if (!props.roleData) return
+
+    try {
+      const res = await fetchGetRolePermissions(props.roleData.roleId)
+
+      // 设置选中的菜单和权限
+      const checkedKeys: (string | number)[] = []
+
+      // 从菜单列表中找到对应的菜单name
+      const findMenuNames = (menus: any[], ids: number[]): string[] => {
+        const names: string[] = []
+        const traverse = (items: any[]) => {
+          items.forEach((item) => {
+            if (ids.includes(item.id)) {
+              names.push(item.name)
+            }
+            if (item.children && item.children.length > 0) {
+              traverse(item.children)
+            }
+          })
+        }
+        traverse(menus)
+        return names
+      }
+
+      // 添加选中的菜单
+      if (res.menuIds && res.menuIds.length > 0) {
+        const menuNames = findMenuNames(menuList.value as any[], res.menuIds)
+        checkedKeys.push(...menuNames)
+      }
+
+      // 添加选中的权限 - 需要根据权限ID找到对应的节点name
+      if (res.permissionIds && res.permissionIds.length > 0) {
+        const findPermissionKeys = (menus: any[], permIds: number[]): string[] => {
+          const keys: string[] = []
+          const traverse = (items: any[]) => {
+            items.forEach((item) => {
+              if (item.meta?.authList?.length) {
+                item.meta.authList.forEach((auth: any) => {
+                  if (permIds.includes(auth.id)) {
+                    keys.push(`${item.name}_${auth.authMark}`)
+                  }
+                })
+              }
+              if (item.children && item.children.length > 0) {
+                traverse(item.children)
+              }
+            })
+          }
+          traverse(menus)
+          return keys
+        }
+
+        const permissionKeys = findPermissionKeys(menuList.value as any[], res.permissionIds)
+        checkedKeys.push(...permissionKeys)
+      }
+
+      // 等待DOM更新后设置选中状态
+      await nextTick()
+      treeRef.value?.setCheckedKeys(checkedKeys, false)
+    } catch (error) {
+      console.error('加载角色权限失败:', error)
+      ElMessage.error('加载权限失败')
+    }
+  }
 
   /**
    * 关闭弹窗并清空选中状态
@@ -160,11 +234,55 @@
   /**
    * 保存权限配置
    */
-  const savePermission = () => {
-    // TODO: 调用保存权限接口
-    ElMessage.success('权限保存成功')
-    emit('success')
-    handleClose()
+  const savePermission = async () => {
+    if (!props.roleData) return
+
+    try {
+      // 获取选中的节点
+      const checkedNodes = treeRef.value?.getCheckedNodes() || []
+      const halfCheckedNodes = treeRef.value?.getHalfCheckedNodes() || []
+
+      // 分离菜单ID和权限ID
+      const menuIds: number[] = []
+      const permissionIds: number[] = []
+
+      // 处理选中的节点
+      checkedNodes.forEach((node: any) => {
+        if (node.isAuth) {
+          // 这是权限节点，使用 permissionId
+          if (node.permissionId && typeof node.permissionId === 'number') {
+            permissionIds.push(node.permissionId)
+          }
+        } else {
+          // 这是菜单节点
+          if (node.id && typeof node.id === 'number') {
+            menuIds.push(node.id)
+          }
+        }
+      })
+
+      // 处理半选中的节点（父菜单）
+      halfCheckedNodes.forEach((node: any) => {
+        if (!node.isAuth && node.id && typeof node.id === 'number') {
+          menuIds.push(node.id)
+        }
+      })
+
+      // 去重
+      const uniqueMenuIds = Array.from(new Set(menuIds))
+      const uniquePermissionIds = Array.from(new Set(permissionIds))
+
+      // 调用保存权限接口
+      await fetchUpdateRolePermissions(props.roleData.roleId, {
+        menuIds: uniqueMenuIds,
+        permissionIds: uniquePermissionIds
+      })
+
+      emit('success')
+      handleClose()
+    } catch (error) {
+      console.error('保存权限失败:', error)
+    }
   }
 
   /**
