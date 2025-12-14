@@ -12,9 +12,9 @@
         ref="treeRef"
         :data="processedMenuList"
         show-checkbox
-        node-key="name"
+        check-strictly
+        node-key="key"
         :default-expand-all="isExpandAll"
-        :default-checked-keys="[1, 2, 3]"
         :props="defaultProps"
         @check="handleTreeCheck"
       >
@@ -100,30 +100,38 @@
 
   /**
    * 处理菜单数据，将 authList 转换为树形子节点
-   * 递归处理菜单树，将权限列表展开为可选择的子节点
+   * 使用若依的设计：菜单和权限独立控制，使用不同的 key 前缀
    */
   const processedMenuList = computed(() => {
     const processNode = (node: MenuNode): MenuNode => {
-      const processed = { ...node }
+      const processed = {
+        ...node,
+        key: `menu_${node.id}` // 菜单节点使用 menu_ 前缀
+      }
 
-      // 如果有 authList，将其转换为子节点
+      // 先递归处理子菜单节点
+      if (node.children && node.children.length > 0) {
+        processed.children = node.children.map(processNode)
+      }
+
+      // 如果有 authList，将其作为子节点添加
       if (node.meta?.authList?.length) {
         const authNodes = node.meta.authList.map((auth) => ({
-          id: `${node.id}_${auth.authMark}`,
+          id: auth.id,
+          key: `perm_${auth.id}`, // 权限节点使用 perm_ 前缀
           name: `${node.name}_${auth.authMark}`,
           label: auth.title,
           authMark: auth.authMark,
-          permissionId: auth.id, // 保存原始的权限ID
-          isAuth: true,
-          checked: auth.checked || false
+          permissionId: auth.id,
+          isAuth: true
         }))
 
-        processed.children = processed.children ? [...processed.children, ...authNodes] : authNodes
-      }
-
-      // 递归处理子节点
-      if (processed.children) {
-        processed.children = processed.children.map(processNode)
+        // 将权限节点追加到 children（子菜单 + 权限节点）
+        if (processed.children) {
+          processed.children = [...processed.children, ...authNodes]
+        } else {
+          processed.children = authNodes
+        }
       }
 
       return processed
@@ -155,6 +163,7 @@
 
   /**
    * 加载角色权限
+   * 使用若依的设计：菜单和权限独立设置，使用不同的 key 前缀
    */
   const loadRolePermissions = async () => {
     if (!props.roleData) return
@@ -162,61 +171,33 @@
     try {
       const res = await fetchGetRolePermissions(props.roleData.roleId)
 
-      // 设置选中的菜单和权限
-      const checkedKeys: (string | number)[] = []
+      // 收集要选中的 keys（菜单 + 权限）
+      const checkedKeys: string[] = []
 
-      // 从菜单列表中找到对应的菜单name
-      const findMenuNames = (menus: any[], ids: number[]): string[] => {
-        const names: string[] = []
-        const traverse = (items: any[]) => {
-          items.forEach((item) => {
-            if (ids.includes(item.id)) {
-              names.push(item.name)
-            }
-            if (item.children && item.children.length > 0) {
-              traverse(item.children)
-            }
-          })
-        }
-        traverse(menus)
-        return names
-      }
-
-      // 添加选中的菜单
+      // 添加选中的菜单（使用 menu_ 前缀）
       if (res.menuIds && res.menuIds.length > 0) {
-        const menuNames = findMenuNames(menuList.value as any[], res.menuIds)
-        checkedKeys.push(...menuNames)
+        res.menuIds.forEach((menuId: number) => {
+          checkedKeys.push(`menu_${menuId}`)
+        })
       }
 
-      // 添加选中的权限 - 需要根据权限ID找到对应的节点name
+      // 添加选中的权限（使用 perm_ 前缀）
       if (res.permissionIds && res.permissionIds.length > 0) {
-        const findPermissionKeys = (menus: any[], permIds: number[]): string[] => {
-          const keys: string[] = []
-          const traverse = (items: any[]) => {
-            items.forEach((item) => {
-              if (item.meta?.authList?.length) {
-                item.meta.authList.forEach((auth: any) => {
-                  if (permIds.includes(auth.id)) {
-                    keys.push(`${item.name}_${auth.authMark}`)
-                  }
-                })
-              }
-              if (item.children && item.children.length > 0) {
-                traverse(item.children)
-              }
-            })
-          }
-          traverse(menus)
-          return keys
-        }
-
-        const permissionKeys = findPermissionKeys(menuList.value as any[], res.permissionIds)
-        checkedKeys.push(...permissionKeys)
+        res.permissionIds.forEach((permId: number) => {
+          checkedKeys.push(`perm_${permId}`)
+        })
       }
 
       // 等待DOM更新后设置选中状态
       await nextTick()
-      treeRef.value?.setCheckedKeys(checkedKeys, false)
+
+      // 先清空之前的选中状态
+      treeRef.value?.setCheckedKeys([])
+
+      // 再设置新的选中状态
+      if (checkedKeys.length > 0) {
+        treeRef.value?.setCheckedKeys(checkedKeys, false)
+      }
     } catch (error) {
       console.error('加载角色权限失败:', error)
       ElMessage.error('加载权限失败')
@@ -233,38 +214,37 @@
 
   /**
    * 保存权限配置
+   * 使用若依的设计：从 key 前缀区分菜单和权限
    */
   const savePermission = async () => {
     if (!props.roleData) return
 
     try {
-      // 获取选中的节点
-      const checkedNodes = treeRef.value?.getCheckedNodes() || []
-      const halfCheckedNodes = treeRef.value?.getHalfCheckedNodes() || []
+      // 获取所有选中的节点（包括全选和半选）
+      const checkedKeys = treeRef.value?.getCheckedKeys() || []
+      const halfCheckedKeys = treeRef.value?.getHalfCheckedKeys() || []
+
+      // 合并选中和半选的 keys
+      const allKeys = [...checkedKeys, ...halfCheckedKeys]
 
       // 分离菜单ID和权限ID
       const menuIds: number[] = []
       const permissionIds: number[] = []
 
-      // 处理选中的节点
-      checkedNodes.forEach((node: any) => {
-        if (node.isAuth) {
-          // 这是权限节点，使用 permissionId
-          if (node.permissionId && typeof node.permissionId === 'number') {
-            permissionIds.push(node.permissionId)
+      allKeys.forEach((key: any) => {
+        const keyStr = String(key)
+        if (keyStr.startsWith('menu_')) {
+          // 菜单节点：提取菜单ID
+          const menuId = parseInt(keyStr.replace('menu_', ''))
+          if (!isNaN(menuId)) {
+            menuIds.push(menuId)
           }
-        } else {
-          // 这是菜单节点
-          if (node.id && typeof node.id === 'number') {
-            menuIds.push(node.id)
+        } else if (keyStr.startsWith('perm_')) {
+          // 权限节点：提取权限ID
+          const permId = parseInt(keyStr.replace('perm_', ''))
+          if (!isNaN(permId)) {
+            permissionIds.push(permId)
           }
-        }
-      })
-
-      // 处理半选中的节点（父菜单）
-      halfCheckedNodes.forEach((node: any) => {
-        if (!node.isAuth && node.id && typeof node.id === 'number') {
-          menuIds.push(node.id)
         }
       })
 
@@ -272,16 +252,25 @@
       const uniqueMenuIds = Array.from(new Set(menuIds))
       const uniquePermissionIds = Array.from(new Set(permissionIds))
 
+      // 如果菜单和权限都为空，提示用户
+      if (uniqueMenuIds.length === 0 && uniquePermissionIds.length === 0) {
+        ElMessage.warning('请至少选择一个菜单或权限')
+        return
+      }
+
       // 调用保存权限接口
       await fetchUpdateRolePermissions(props.roleData.roleId, {
         menuIds: uniqueMenuIds,
         permissionIds: uniquePermissionIds
       })
 
+      ElMessage.success('权限配置成功，相关用户需重新登录后生效')
+
       emit('success')
       handleClose()
     } catch (error) {
       console.error('保存权限失败:', error)
+      ElMessage.error('保存权限失败')
     }
   }
 
@@ -319,7 +308,7 @@
   }
 
   /**
-   * 递归获取所有节点的 key
+   * 递归获取所有节点的 key（使用新的 key 格式）
    * @param nodes 节点列表
    * @returns 所有节点的 key 数组
    */
@@ -327,7 +316,7 @@
     const keys: string[] = []
     const traverse = (nodeList: MenuNode[]): void => {
       nodeList.forEach((node) => {
-        if (node.name) keys.push(node.name)
+        if (node.key) keys.push(node.key)
         if (node.children?.length) traverse(node.children)
       })
     }
@@ -366,7 +355,6 @@
       totalHalfChecked: tree.getHalfCheckedKeys().length
     }
 
-    console.log('=== 选中的权限数据 ===', selectedData)
     ElMessage.success(`已输出选中数据到控制台，共选中 ${selectedData.totalChecked} 个节点`)
   }
 </script>

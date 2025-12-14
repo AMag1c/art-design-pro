@@ -97,7 +97,7 @@ export function fetchUpdateRolePermissions(
   return request.put({
     url: `/api/role/${roleId}/permissions`,
     params,
-    showSuccessMessage: true
+    showSuccessMessage: false // 改为 false，由组件显示通知
   })
 }
 
