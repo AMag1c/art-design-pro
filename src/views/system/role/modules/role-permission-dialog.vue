@@ -41,9 +41,12 @@
 </template>
 
 <script setup lang="ts">
-  import { useMenuStore } from '@/store/modules/menu'
   import { formatMenuTitle } from '@/utils/router'
-  import { fetchGetRolePermissions, fetchUpdateRolePermissions } from '@/api/system-manage'
+  import {
+    fetchGetRolePermissions,
+    fetchUpdateRolePermissions,
+    fetchGetMenuList
+  } from '@/api/system-manage'
   import { ElMessage } from 'element-plus'
 
   type RoleListItem = Api.SystemManage.RoleListItem
@@ -65,7 +68,7 @@
 
   const emit = defineEmits<Emits>()
 
-  const { menuList } = storeToRefs(useMenuStore())
+  const allMenuList = ref<any[]>([])
   const treeRef = ref()
   const isExpandAll = ref(true)
   const isSelectAll = ref(false)
@@ -137,7 +140,7 @@
       return processed
     }
 
-    return (menuList.value as any[]).map(processNode)
+    return allMenuList.value.map(processNode)
   })
 
   /**
@@ -155,11 +158,26 @@
     () => props.modelValue,
     async (newVal) => {
       if (newVal && props.roleData) {
-        // 加载角色的权限数据
+        // 先加载所有菜单列表
+        await loadAllMenus()
+        // 再加载角色的权限数据
         await loadRolePermissions()
       }
     }
   )
+
+  /**
+   * 加载所有菜单列表
+   */
+  const loadAllMenus = async () => {
+    try {
+      const menus = await fetchGetMenuList()
+      allMenuList.value = menus || []
+    } catch (error) {
+      console.error('加载菜单列表失败:', error)
+      ElMessage.error('加载菜单列表失败')
+    }
+  }
 
   /**
    * 加载角色权限
