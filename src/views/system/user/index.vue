@@ -73,7 +73,7 @@
   import ArtExcelImport from '@/components/core/forms/art-excel-import/index.vue'
   import { ACCOUNT_TABLE_DATA } from '@/mock/temp/formData'
   import { useTable } from '@/hooks/core/useTable'
-  import { fetchGetUserList } from '@/api/system-manage'
+  import { fetchGetUserList, fetchDeleteUser, fetchBatchDeleteUsers } from '@/api/system-manage'
   import UserSearch from './modules/user-search.vue'
   import UserDialog from './modules/user-dialog.vue'
   import { ElTag, ElMessageBox, ElImage, ElMessage, ElIcon } from 'element-plus'
@@ -109,6 +109,14 @@
     '4': { type: 'danger' as const, text: '注销' }
   } as const
 
+  // 性别映射
+  const GENDER_MAP = {
+    male: '男',
+    female: '女',
+    other: '其他',
+    unknown: '未知'
+  } as const
+
   /**
    * 获取用户状态配置
    */
@@ -119,6 +127,13 @@
         text: '未知'
       }
     )
+  }
+
+  /**
+   * 获取性别显示文本
+   */
+  const getGenderText = (gender: string) => {
+    return GENDER_MAP[gender as keyof typeof GENDER_MAP] || '未知'
   }
 
   const {
@@ -175,7 +190,7 @@
           prop: 'userGender',
           label: '性别',
           sortable: true,
-          formatter: (row) => row.userGender
+          formatter: (row) => getGenderText(row.userGender)
         },
         { prop: 'userPhone', label: '手机号' },
         {
@@ -257,15 +272,22 @@
   /**
    * 删除用户
    */
-  const deleteUser = (row: UserListItem): void => {
-    console.log('删除用户:', row)
-    ElMessageBox.confirm(`确定要注销该用户吗？`, '注销用户', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'error'
-    }).then(() => {
-      ElMessage.success('注销成功')
-    })
+  const deleteUser = async (row: UserListItem): Promise<void> => {
+    try {
+      await ElMessageBox.confirm(`确定要删除用户 "${row.userName}" 吗？`, '删除用户', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+
+      await fetchDeleteUser(row.id)
+      // 刷新表格
+      refreshData()
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('删除失败:', error)
+      }
+    }
   }
 
   /**
@@ -322,42 +344,42 @@
   /**
    * 批量删除
    */
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedRows.value.length === 0) {
       ElMessage.warning('请先选择要删除的用户')
       return
     }
 
-    ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 个用户吗？`, '批量删除', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-      .then(() => {
-        // 这里应该调用批量删除API
-        console.log('批量删除用户:', selectedRows.value)
-        ElMessage.success('批量删除成功')
-        // 清空选中
-        selectedRows.value = []
-        // 刷新表格
-        refreshData()
-      })
-      .catch(() => {
-        // 用户取消
-      })
-  }
-
-  /**
-   * 处理弹窗提交事件
-   */
-  const handleDialogSubmit = async () => {
     try {
-      dialogVisible.value = false
-      currentUserData.value = {}
+      await ElMessageBox.confirm(
+        `确定要删除选中的 ${selectedRows.value.length} 个用户吗？`,
+        '批量删除',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+
+      const ids = selectedRows.value.map((row) => row.id)
+      await fetchBatchDeleteUsers(ids)
+
+      // 清空选中
+      selectedRows.value = []
       // 刷新表格
       refreshData()
     } catch (error) {
-      console.error('提交失败:', error)
+      if (error !== 'cancel') {
+        console.error('批量删除失败:', error)
+      }
     }
+  }
+
+  /**
+   * 处理对话框提交
+   */
+  const handleDialogSubmit = () => {
+    // 刷新表格数据
+    refreshData()
   }
 </script>
