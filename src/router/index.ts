@@ -5,6 +5,9 @@ import { configureNProgress } from '@/utils/router'
 import { setupBeforeEachGuard } from './guards/beforeEach'
 import { setupAfterEachGuard } from './guards/afterEach'
 
+// 导出路由重载工具
+export { routeReloader } from './utils/routeReloader'
+
 // 创建路由实例
 export const router = createRouter({
   history: createWebHashHistory(),

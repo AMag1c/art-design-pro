@@ -171,8 +171,8 @@
 
       emit('success')
       handleClose()
-    } catch (error) {
-      console.log('表单验证失败:', error)
+    } catch {
+      // 表单验证失败，不做处理
     }
   }
 </script>

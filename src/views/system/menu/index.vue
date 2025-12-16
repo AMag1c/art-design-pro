@@ -107,6 +107,11 @@
     getMenuList()
   })
 
+  // 页面从缓存中激活时，重新获取最新数据
+  onActivated(() => {
+    getMenuList()
+  })
+
   /**
    * 获取菜单列表数据
    */
@@ -520,6 +525,16 @@
 
       // 刷新菜单列表
       await getMenuList()
+
+      // 自动重新加载菜单和路由配置（无感刷新，跳过当前页面刷新以保留展开状态）
+      if (formData.menuType === 'menu') {
+        // 动态导入 routeReloader，避免循环依赖
+        const { routeReloader } = await import('@/router')
+        await routeReloader.reload(true) // true = 跳过当前页面刷新
+      }
+
+      // 关闭弹窗
+      dialogVisible.value = false
     } catch (error) {
       console.error('提交失败:', error)
     } finally {

@@ -251,7 +251,6 @@
    * @param params 参数
    */
   const handleSearch = (params: Record<string, any>) => {
-    console.log(params)
     // 搜索参数赋值
     Object.assign(searchParams, params)
     getData()
@@ -261,7 +260,6 @@
    * 显示用户弹窗
    */
   const showDialog = (type: DialogType, row?: UserListItem): void => {
-    console.log('打开弹窗:', { type, row })
     dialogType.value = type
     currentUserData.value = row || {}
     nextTick(() => {
@@ -327,7 +325,6 @@
    * 导入成功回调
    */
   const handleImportSuccess = (data: any) => {
-    console.log('导入数据:', data)
     ElMessage.success(`成功导入 ${data.length} 条数据`)
     // 刷新表格数据
     refreshData()

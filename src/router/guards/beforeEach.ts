@@ -52,6 +52,7 @@ import { fetchGetUserInfo } from '@/api/auth'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
+import { routeReloader } from '../utils/routeReloader'
 
 // 路由注册器实例
 let routeRegistry: RouteRegistry | null = null
@@ -104,6 +105,9 @@ export function resetRouteInitState(): void {
 export function setupBeforeEachGuard(router: Router): void {
   // 初始化路由注册器
   routeRegistry = new RouteRegistry(router)
+
+  // 初始化路由重载器
+  routeReloader.init(router, routeRegistry, menuProcessor)
 
   router.beforeEach(
     async (
