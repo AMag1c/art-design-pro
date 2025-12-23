@@ -15,15 +15,25 @@ export function fetchLogin(params: Api.Auth.LoginParams) {
 }
 
 /**
- * 获取用户信息
- * @returns 用户信息
+ * 获取管理员信息（含角色和权限）
+ * @returns 管理员信息
  */
 export function fetchGetUserInfo() {
   return request.get<Api.Auth.UserInfo>({
-    url: '/api/user/info'
+    url: '/api/admin/info'
     // 自定义请求头
     // headers: {
     //   'X-Custom-Header': 'your-custom-value'
     // }
+  })
+}
+
+/**
+ * 退出登录
+ * @returns void
+ */
+export function fetchLogout() {
+  return request.post<void>({
+    url: '/api/auth/logout'
   })
 }

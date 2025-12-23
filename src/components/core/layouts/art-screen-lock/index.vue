@@ -113,6 +113,7 @@
   import CryptoJS from 'crypto-js'
   import { useUserStore } from '@/store/modules/user'
   import { mittBus } from '@/utils/sys'
+  import { fetchLogout } from '@/api/auth'
 
   // 国际化
   const { t } = useI18n()
@@ -399,8 +400,17 @@
     })
   }
 
-  const toLogin = () => {
-    userStore.logOut()
+  const toLogin = async () => {
+    try {
+      // 调用后端登出接口（清除服务器的 HttpOnly Cookie）
+      await fetchLogout()
+    } catch (error) {
+      console.error('[Logout] Failed to call logout API:', error)
+      // 即使后端调用失败，也继续清除前端状态（容错处理）
+    } finally {
+      // 清除前端状态
+      userStore.logOut()
+    }
   }
 
   const openLockScreen = () => {

@@ -45,7 +45,7 @@
   import {
     fetchGetRolePermissions,
     fetchUpdateRolePermissions,
-    fetchGetMenuList
+    fetchGetAllMenus
   } from '@/api/system-manage'
   import { ElMessage } from 'element-plus'
 
@@ -171,7 +171,7 @@
    */
   const loadAllMenus = async () => {
     try {
-      const menus = await fetchGetMenuList()
+      const menus = await fetchGetAllMenus()
       allMenuList.value = menus || []
     } catch (error) {
       console.error('加载菜单列表失败:', error)

@@ -6,7 +6,7 @@ import { AppRouteRecord } from '@/types/router'
 // 获取用户列表
 export function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
   return request.get<Api.SystemManage.UserList>({
-    url: '/api/user/list',
+    url: '/api/admin/user/list',
     params
   })
 }
@@ -14,7 +14,7 @@ export function fetchGetUserList(params: Api.SystemManage.UserSearchParams) {
 // 创建用户
 export function fetchCreateUser(params: Api.SystemManage.CreateUserParams) {
   return request.post({
-    url: '/api/user',
+    url: '/api/admin/user',
     params,
     showSuccessMessage: true
   })
@@ -23,7 +23,7 @@ export function fetchCreateUser(params: Api.SystemManage.CreateUserParams) {
 // 更新用户
 export function fetchUpdateUser(id: number, params: Api.SystemManage.UpdateUserParams) {
   return request.put({
-    url: `/api/user/${id}`,
+    url: `/api/admin/user/${id}`,
     params,
     showSuccessMessage: true
   })
@@ -32,7 +32,7 @@ export function fetchUpdateUser(id: number, params: Api.SystemManage.UpdateUserP
 // 删除用户
 export function fetchDeleteUser(id: number) {
   return request.del({
-    url: `/api/user/${id}`,
+    url: `/api/admin/user/${id}`,
     showSuccessMessage: true
   })
 }
@@ -40,7 +40,7 @@ export function fetchDeleteUser(id: number) {
 // 批量删除用户
 export function fetchBatchDeleteUsers(ids: number[]) {
   return request.del({
-    url: '/api/user/batch',
+    url: '/api/admin/user/batch',
     params: { ids },
     showSuccessMessage: true
   })
@@ -51,7 +51,7 @@ export function fetchBatchDeleteUsers(ids: number[]) {
 // 获取角色列表
 export function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams) {
   return request.get<Api.SystemManage.RoleList>({
-    url: '/api/role/list',
+    url: '/api/admin/role/list',
     params
   })
 }
@@ -59,7 +59,7 @@ export function fetchGetRoleList(params: Api.SystemManage.RoleSearchParams) {
 // 创建角色
 export function fetchCreateRole(params: Api.SystemManage.CreateRoleParams) {
   return request.post({
-    url: '/api/role',
+    url: '/api/admin/role',
     params,
     showSuccessMessage: true
   })
@@ -68,7 +68,7 @@ export function fetchCreateRole(params: Api.SystemManage.CreateRoleParams) {
 // 更新角色
 export function fetchUpdateRole(id: number, params: Api.SystemManage.UpdateRoleParams) {
   return request.put({
-    url: `/api/role/${id}`,
+    url: `/api/admin/role/${id}`,
     params,
     showSuccessMessage: true
   })
@@ -77,7 +77,7 @@ export function fetchUpdateRole(id: number, params: Api.SystemManage.UpdateRoleP
 // 删除角色
 export function fetchDeleteRole(id: number) {
   return request.del({
-    url: `/api/role/${id}`,
+    url: `/api/admin/role/${id}`,
     showSuccessMessage: true
   })
 }
@@ -85,7 +85,7 @@ export function fetchDeleteRole(id: number) {
 // 获取角色权限配置
 export function fetchGetRolePermissions(roleId: number) {
   return request.get<Api.SystemManage.RolePermissions>({
-    url: `/api/role/${roleId}/permissions`
+    url: `/api/admin/role/${roleId}/permissions`
   })
 }
 
@@ -95,7 +95,7 @@ export function fetchUpdateRolePermissions(
   params: Api.SystemManage.UpdateRolePermissionsParams
 ) {
   return request.put({
-    url: `/api/role/${roleId}/permissions`,
+    url: `/api/admin/role/${roleId}/permissions`,
     params,
     showSuccessMessage: false // 改为 false，由组件显示通知
   })
@@ -103,17 +103,17 @@ export function fetchUpdateRolePermissions(
 
 // ==================== 菜单管理 ====================
 
-// 获取菜单列表
-export function fetchGetMenuList() {
+// 获取所有菜单列表（管理用）
+export function fetchGetAllMenus() {
   return request.get<AppRouteRecord[]>({
-    url: '/api/menu'
+    url: '/api/admin/menu/list'
   })
 }
 
 // 创建菜单
 export function fetchCreateMenu(params: Api.SystemManage.CreateMenuParams) {
   return request.post({
-    url: '/api/menu',
+    url: '/api/admin/menu',
     params,
     showSuccessMessage: true
   })
@@ -122,7 +122,7 @@ export function fetchCreateMenu(params: Api.SystemManage.CreateMenuParams) {
 // 更新菜单
 export function fetchUpdateMenu(id: number, params: Api.SystemManage.UpdateMenuParams) {
   return request.put({
-    url: `/api/menu/${id}`,
+    url: `/api/admin/menu/${id}`,
     params,
     showSuccessMessage: true
   })
@@ -131,7 +131,7 @@ export function fetchUpdateMenu(id: number, params: Api.SystemManage.UpdateMenuP
 // 删除菜单
 export function fetchDeleteMenu(id: number) {
   return request.del({
-    url: `/api/menu/${id}`,
+    url: `/api/admin/menu/${id}`,
     showSuccessMessage: true
   })
 }
@@ -141,7 +141,7 @@ export function fetchDeleteMenu(id: number) {
 // 创建按钮权限
 export function fetchCreatePermission(params: Api.SystemManage.CreateButtonPermissionParams) {
   return request.post({
-    url: '/api/menu/button',
+    url: '/api/admin/menu/button',
     params,
     showSuccessMessage: true
   })
@@ -153,7 +153,7 @@ export function fetchUpdatePermission(
   params: Api.SystemManage.UpdateButtonPermissionParams
 ) {
   return request.put({
-    url: `/api/menu/button/${id}`,
+    url: `/api/admin/menu/button/${id}`,
     params,
     showSuccessMessage: true
   })
@@ -162,7 +162,7 @@ export function fetchUpdatePermission(
 // 删除按钮权限
 export function fetchDeletePermission(id: number) {
   return request.del({
-    url: `/api/menu/button/${id}`,
+    url: `/api/admin/menu/button/${id}`,
     showSuccessMessage: true
   })
 }

@@ -66,6 +66,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { WEB_LINKS } from '@/utils/constants'
   import { mittBus } from '@/utils/sys'
+  import { fetchLogout } from '@/api/auth'
 
   defineOptions({ name: 'ArtUserMenu' })
 
@@ -115,8 +116,17 @@
         confirmButtonText: t('common.confirm'),
         cancelButtonText: t('common.cancel'),
         customClass: 'login-out-dialog'
-      }).then(() => {
-        userStore.logOut()
+      }).then(async () => {
+        try {
+          // 调用后端登出接口（清除服务器的 HttpOnly Cookie）
+          await fetchLogout()
+        } catch (error) {
+          console.error('[Logout] Failed to call logout API:', error)
+          // 即使后端调用失败，也继续清除前端状态（容错处理）
+        } finally {
+          // 清除前端状态
+          userStore.logOut()
+        }
       })
     }, 200)
   }
