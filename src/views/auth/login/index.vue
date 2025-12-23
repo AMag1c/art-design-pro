@@ -219,18 +219,13 @@
       // 登录请求
       const { username, password } = formData
 
-      const { token, refreshToken } = await fetchLogin({
+      // 登录
+      await fetchLogin({
         userName: username,
         password
       })
 
-      // 验证token
-      if (!token) {
-        throw new Error('Login failed - no token received')
-      }
-
-      // 存储 token 和登录状态
-      userStore.setToken(token, refreshToken)
+      // 设置登录状态
       userStore.setLoginStatus(true)
 
       // 登录成功处理
