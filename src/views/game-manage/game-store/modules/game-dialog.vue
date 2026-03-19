@@ -262,7 +262,7 @@
             </ElCol>
 
             <ElCol :span="12">
-              <ElFormItem label="下载有效期">
+              <ElFormItem label="下载有效期·天">
                 <ElInputNumber
                   v-model="versionData.validDays"
                   :controls="false"
