@@ -1,6 +1,7 @@
 <!-- 图标组件 -->
 <template>
   <Icon v-if="icon" :icon="icon" v-bind="bindAttrs" class="art-svg-icon inline" />
+  <svg v-else class="art-svg-icon inline" width="1em" height="1em" v-bind="bindAttrs" />
 </template>
 
 <script setup lang="ts">

@@ -177,12 +177,133 @@
               </ElFormItem>
             </ElCol>
 
-            <!-- 空列占位，保持三列布局对齐 -->
             <ElCol :span="8" />
 
+            <!-- 游戏截图（第一张自动作为封面） -->
             <ElCol :span="24">
-              <ElFormItem label="封面图片" prop="coverImage">
-                <ElInput v-model="formData.coverImage" placeholder="请输入封面图片URL" clearable />
+              <ElFormItem label="游戏截图">
+                <div class="w-full">
+                  <p class="text-xs text-gray-400 mb-2">
+                    第一张将作为封面 · 可拖拽排序 · 最多 10 张 · 支持多选
+                  </p>
+                  <!-- 截图网格：draggable 设为 contents 使子项直接参与外层 flex 布局 -->
+                  <div class="flex flex-wrap gap-2 items-start">
+                    <draggable
+                      v-model="formData.screenshots"
+                      item-key="id"
+                      handle=".drag-handle"
+                      class="contents"
+                    >
+                      <template #item="{ element, index }">
+                        <div class="relative group shrink-0" style="width: 100px; height: 100px">
+                          <!-- 封面标记 -->
+                          <span
+                            v-if="index === 0 && element.url"
+                            class="absolute top-1 left-1 z-20 bg-primary/90 text-white text-[9px] px-1 py-0.5 rounded leading-3 pointer-events-none select-none"
+                            >封面</span
+                          >
+                          <!-- 拖拽手柄（悬停显示） -->
+                          <span
+                            v-if="element.url"
+                            class="drag-handle absolute bottom-1 left-1 z-20 cursor-move bg-black/50 text-white rounded px-1 text-[10px] leading-4 select-none opacity-0 group-hover:opacity-100 transition-opacity"
+                            >⠿</span
+                          >
+                          <!-- 删除按钮（悬停显示） -->
+                          <button
+                            type="button"
+                            class="absolute top-1 right-1 z-20 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            @click.prevent="removeScreenshot(index)"
+                            >×</button
+                          >
+                          <!-- 图片区 / 上传中 -->
+                          <div
+                            class="w-full h-full overflow-hidden rounded border border-dashed"
+                            :class="
+                              element.url ? 'border-transparent cursor-pointer' : 'border-gray-300'
+                            "
+                            @click="element.url ? openPreview(index) : undefined"
+                          >
+                            <!-- 上传中状态 -->
+                            <div
+                              v-if="element.uploading"
+                              class="flex h-full flex-col items-center justify-center gap-1 text-gray-400"
+                            >
+                              <ElIcon class="animate-spin" :size="22"><Loading /></ElIcon>
+                              <span class="text-xs">上传中</span>
+                            </div>
+                            <!-- 已有图片 -->
+                            <template v-else-if="element.url">
+                              <img :src="element.url" class="w-full h-full object-cover" alt="" />
+                              <!-- 悬停预览提示 -->
+                              <div
+                                class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded"
+                              >
+                                <ElIcon :size="22" class="text-white"><ZoomIn /></ElIcon>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </draggable>
+
+                    <!-- 始终可见的上传槽（未满 10 张时） -->
+                    <div
+                      v-if="formData.screenshots.length < 10"
+                      class="shrink-0 cursor-pointer overflow-hidden rounded border border-dashed border-gray-300 hover:border-primary flex flex-col items-center justify-center gap-1 text-gray-400 transition-colors"
+                      style="width: 100px; height: 100px"
+                      @click="screenshotInputRef?.click()"
+                    >
+                      <ElIcon :size="24"><Plus /></ElIcon>
+                      <span class="text-xs">点击上传</span>
+                    </div>
+                    <!-- 多选文件 input -->
+                    <input
+                      ref="screenshotInputRef"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      multiple
+                      class="hidden"
+                      @change="handleScreenshotFileChange"
+                    />
+                  </div>
+                </div>
+              </ElFormItem>
+            </ElCol>
+
+            <!-- 游戏视频 -->
+            <ElCol :span="24">
+              <ElFormItem label="游戏视频">
+                <div class="w-full">
+                  <template v-if="formData.videoUrl">
+                    <video
+                      :src="formData.videoUrl"
+                      controls
+                      class="max-w-full rounded-lg mb-2"
+                      style="max-height: 200px"
+                    />
+                    <br />
+                    <ElButton type="danger" size="small" plain @click="formData.videoUrl = ''"
+                      >× 清除视频</ElButton
+                    >
+                  </template>
+                  <template v-else>
+                    <ElButton
+                      :loading="videoUploading"
+                      size="small"
+                      @click="videoInputRef?.click()"
+                    >
+                      点击上传视频（mp4/webm，最大 500MB）
+                    </ElButton>
+                    <input
+                      ref="videoInputRef"
+                      type="file"
+                      accept="video/mp4,video/webm"
+                      style="display: none"
+                      @change="handleVideoUpload"
+                    />
+                    <span class="ml-2 text-xs text-gray-400">支持 MP4 / WebM</span>
+                  </template>
+                </div>
               </ElFormItem>
             </ElCol>
 
@@ -323,10 +444,22 @@
       </ElButton>
     </template>
   </ElDialog>
+
+  <!-- 截图预览器 -->
+  <ElImageViewer
+    v-if="previewVisible"
+    :url-list="previewSrcList"
+    :initial-index="previewIndex"
+    @close="previewVisible = false"
+  />
 </template>
 
 <script setup lang="ts">
-  import { Delete } from '@element-plus/icons-vue'
+  import { Delete, Plus, Loading, ZoomIn } from '@element-plus/icons-vue'
+  // Delete 用于下载链接删除按钮
+  import { ElImageViewer } from 'element-plus'
+  import draggable from 'vuedraggable'
+  import { uploadFile } from '@/api/upload'
   import type { FormInstance } from 'element-plus'
   import { ElMessage, ElOption } from 'element-plus'
   import { DialogType } from '@/types'
@@ -357,6 +490,16 @@
   const categoriesLoading = ref(false)
   const activeTab = ref('basic')
 
+  let screenshotIdCounter = 0
+  const screenshotInputRef = ref<HTMLInputElement>()
+  const videoInputRef = ref<HTMLInputElement>()
+  const videoUploading = ref(false)
+
+  // 预览状态
+  const previewVisible = ref(false)
+  const previewIndex = ref(0)
+  const previewSrcList = computed(() => formData.screenshots.map((s) => s.url).filter(Boolean))
+
   // ── Tab 1 表单数据 ──────────────────────────────────────────
   const formData = reactive({
     name: '',
@@ -372,8 +515,9 @@
     downloads: 0,
     views: 0,
     sortOrder: 0,
-    coverImage: '',
-    description: ''
+    description: '',
+    screenshots: [] as { id: number; url: string; uploading?: boolean }[],
+    videoUrl: ''
   })
 
   // ── Tab 2 版本信息 ──────────────────────────────────────────
@@ -397,6 +541,79 @@
 
   const removeLink = (index: number) => {
     downloadLinks.value.splice(index, 1)
+  }
+
+  // 打开截图预览（只对有 URL 的项生效）
+  const openPreview = (index: number) => {
+    const filled = formData.screenshots.filter((s) => s.url)
+    const url = formData.screenshots[index]?.url
+    if (!url) return
+    previewIndex.value = Math.max(
+      0,
+      filled.findIndex((s) => s.url === url)
+    )
+    previewVisible.value = true
+  }
+
+  // 批量上传截图（支持多选）
+  const handleScreenshotFileChange = async (e: Event) => {
+    const files = Array.from((e.target as HTMLInputElement).files ?? [])
+    if (!files.length) return
+
+    const available = 10 - formData.screenshots.length
+    const toUpload = files.slice(0, available)
+    if (toUpload.length < files.length) {
+      ElMessage.warning(`最多 10 张，已截取前 ${toUpload.length} 张`)
+    }
+
+    // 先占位（显示加载动画）
+    toUpload.forEach(() => {
+      formData.screenshots.push({ id: ++screenshotIdCounter, url: '', uploading: true })
+    })
+    const startIdx = formData.screenshots.length - toUpload.length
+
+    await Promise.all(
+      toUpload.map(async (file, i) => {
+        const item = formData.screenshots[startIdx + i]
+        try {
+          const result = await uploadFile(file, 'game-screenshot')
+          item.url = result.url
+        } catch (err: any) {
+          ElMessage.error(err?.message ?? `第 ${i + 1} 张上传失败`)
+        } finally {
+          item.uploading = false
+        }
+      })
+    )
+
+    // 移除上传失败的项（url 仍为空）
+    for (let i = formData.screenshots.length - 1; i >= 0; i--) {
+      if (!formData.screenshots[i].url && !formData.screenshots[i].uploading) {
+        formData.screenshots.splice(i, 1)
+      }
+    }
+
+    if (screenshotInputRef.value) screenshotInputRef.value.value = ''
+  }
+
+  const removeScreenshot = (i: number) => {
+    formData.screenshots.splice(i, 1)
+  }
+
+  const handleVideoUpload = async (e: Event) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    videoUploading.value = true
+    try {
+      const result = await uploadFile(file, 'game-video')
+      formData.videoUrl = (result as any).url || ''
+      ElMessage.success('视频上传成功')
+    } catch {
+      ElMessage.error('视频上传失败')
+    } finally {
+      videoUploading.value = false
+      if (videoInputRef.value) videoInputRef.value.value = ''
+    }
   }
 
   // ── 表单校验规则 ────────────────────────────────────────────
@@ -441,7 +658,6 @@
           downloads: row.downloads ?? 0,
           views: row.views ?? 0,
           sortOrder: row.sortOrder ?? 0,
-          coverImage: row.coverImage || '',
           description: row.description || ''
         })
         Object.assign(versionData, {
@@ -455,6 +671,10 @@
         downloadLinks.value = Array.isArray(row.downloadLinks)
           ? row.downloadLinks.map((l) => ({ ...l }))
           : []
+        formData.screenshots = Array.isArray(row.screenshots)
+          ? row.screenshots.map((url: string) => ({ id: ++screenshotIdCounter, url }))
+          : []
+        formData.videoUrl = row.videoUrl || ''
       } catch {
         ElMessage.error('加载游戏详情失败')
       }
@@ -474,7 +694,6 @@
         downloads: 0,
         views: 0,
         sortOrder: 0,
-        coverImage: '',
         description: ''
       })
       Object.assign(versionData, {
@@ -485,6 +704,8 @@
         activationCode: '',
         validDays: 0
       })
+      formData.screenshots = []
+      formData.videoUrl = ''
     }
   }
 
@@ -525,7 +746,8 @@
       // originalPrice: 有值则传，null/undefined 则不传（不传代表不修改；已知限制：编辑时无法清除原有值）
       if (formData.originalPrice != null) submitData.originalPrice = formData.originalPrice
       if (formData.releaseDate.trim()) submitData.releaseDate = formData.releaseDate.trim()
-      if (formData.coverImage.trim()) submitData.coverImage = formData.coverImage.trim()
+      // 封面取第一张截图
+      submitData.coverImage = formData.screenshots[0]?.url || ''
       if (formData.description.trim()) submitData.description = formData.description.trim()
 
       // Tab 2 版本信息（空字符串不传）
@@ -539,6 +761,8 @@
 
       // Tab 3 下载链接（过滤无效行）
       submitData.downloadLinks = downloadLinks.value.filter((l) => l.name.trim() && l.url.trim())
+      submitData.screenshots = formData.screenshots.map((s) => s.url).filter(Boolean)
+      if (formData.videoUrl.trim()) submitData.videoUrl = formData.videoUrl.trim()
 
       if (props.type === 'add') {
         await fetchCreateGameItem(submitData)
@@ -572,5 +796,9 @@
       activationCode: '',
       validDays: 0
     })
+    formData.screenshots = []
+    formData.videoUrl = ''
+    videoUploading.value = false
+    previewVisible.value = false
   }
 </script>

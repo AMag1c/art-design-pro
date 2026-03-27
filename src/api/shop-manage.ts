@@ -200,6 +200,8 @@ export interface GameItem {
   activationCode?: string
   validDays: number
   downloadLinks?: DownloadLink[]
+  screenshots?: string[]
+  videoUrl?: string
   createTime: string
   updateTime: string
 }

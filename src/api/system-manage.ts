@@ -41,7 +41,7 @@ export function fetchDeleteUser(id: number) {
 export function fetchBatchDeleteUsers(ids: number[]) {
   return request.del({
     url: '/api/admin/user/batch',
-    params: { ids },
+    data: { ids },
     showSuccessMessage: true
   })
 }
@@ -139,11 +139,14 @@ export function fetchDeleteMenu(id: number) {
 // ==================== 按钮权限管理 ====================
 
 // 创建按钮权限
-export function fetchCreatePermission(params: Api.SystemManage.CreateButtonPermissionParams) {
+export function fetchCreatePermission(
+  params: Api.SystemManage.CreateButtonPermissionParams,
+  showSuccessMessage = true
+) {
   return request.post({
     url: '/api/admin/menu/button',
     params,
-    showSuccessMessage: true
+    showSuccessMessage
   })
 }
 

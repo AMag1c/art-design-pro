@@ -45,6 +45,42 @@
         :lockType="lockMenuType"
         @submit="handleSubmit"
       />
+
+      <!-- 快捷添加标准权限弹窗 -->
+      <ElDialog
+        v-model="quickAuthVisible"
+        title="快捷添加标准权限"
+        width="420px"
+        :close-on-click-modal="false"
+      >
+        <div class="py-1">
+          <ElFormItem label="资源名称" label-width="80px">
+            <ElInput
+              v-model="quickAuthName"
+              placeholder="如：商品、用户、订单"
+              clearable
+              @keyup.enter="handleQuickAuthSubmit"
+            />
+          </ElFormItem>
+          <div v-if="quickAuthName.trim()" class="mt-3 text-sm text-gray-400 pl-20">
+            将自动创建：
+            <ElTag type="success" size="small" class="mx-1">新增{{ quickAuthName.trim() }}</ElTag>
+            <ElTag type="warning" size="small" class="mx-1">编辑{{ quickAuthName.trim() }}</ElTag>
+            <ElTag type="danger" size="small" class="mx-1">删除{{ quickAuthName.trim() }}</ElTag>
+          </div>
+        </div>
+        <template #footer>
+          <ElButton @click="quickAuthVisible = false">取消</ElButton>
+          <ElButton
+            type="primary"
+            :loading="quickAuthLoading"
+            @click="handleQuickAuthSubmit"
+            v-ripple
+          >
+            一键添加
+          </ElButton>
+        </template>
+      </ElDialog>
     </ElCard>
   </div>
 </template>
@@ -228,7 +264,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 180,
+      width: 220,
       align: 'right',
       formatter: (row: AppRouteRecord) => {
         const buttonStyle = { style: 'text-align: right' }
@@ -249,8 +285,14 @@
         return h('div', buttonStyle, [
           h(ArtButtonTable, {
             type: 'add',
-            onClick: () => handleAddAuth(row), // 使用父菜单的 row 数据
-            title: '新增权限'
+            onClick: () => handleAddAuth(row),
+            title: '新增单个权限'
+          }),
+          h(ArtButtonTable, {
+            icon: 'ri:flashlight-line',
+            iconClass: 'bg-warning/12 text-warning',
+            onClick: () => handleQuickAddAuth(row),
+            title: '批量添加标准权限'
           }),
           h(ArtButtonTable, {
             type: 'edit',
@@ -412,6 +454,71 @@
     }
     lockMenuType.value = false // 允许切换菜单类型
     dialogVisible.value = true
+  }
+
+  // 快捷添加标准权限
+  const quickAuthVisible = ref(false)
+  const quickAuthName = ref('')
+  const quickAuthLoading = ref(false)
+  const quickAuthMenuId = ref(0)
+
+  /**
+   * 打开快捷添加标准权限弹窗
+   */
+  const handleQuickAddAuth = (row: AppRouteRecord): void => {
+    quickAuthMenuId.value = row.id!
+    quickAuthName.value = ''
+    quickAuthVisible.value = true
+  }
+
+  /**
+   * 提交快捷添加标准权限（新增/编辑/删除）
+   */
+  const handleQuickAuthSubmit = async (): Promise<void> => {
+    const name = quickAuthName.value.trim()
+    if (!name) {
+      ElMessage.warning('请输入资源名称')
+      return
+    }
+    quickAuthLoading.value = true
+    try {
+      await Promise.all([
+        fetchCreatePermission(
+          {
+            menuId: quickAuthMenuId.value,
+            permissionName: `新增${name}`,
+            permissionCode: 'add',
+            sortOrder: 1
+          },
+          false
+        ),
+        fetchCreatePermission(
+          {
+            menuId: quickAuthMenuId.value,
+            permissionName: `编辑${name}`,
+            permissionCode: 'edit',
+            sortOrder: 2
+          },
+          false
+        ),
+        fetchCreatePermission(
+          {
+            menuId: quickAuthMenuId.value,
+            permissionName: `删除${name}`,
+            permissionCode: 'delete',
+            sortOrder: 3
+          },
+          false
+        )
+      ])
+      ElMessage.success(`已成功添加「新增/编辑/删除${name}」3 个权限`)
+      quickAuthVisible.value = false
+      await getMenuList()
+    } catch {
+      ElMessage.error('添加失败，请重试')
+    } finally {
+      quickAuthLoading.value = false
+    }
   }
 
   /**

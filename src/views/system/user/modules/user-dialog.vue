@@ -214,7 +214,7 @@
         size: 100,
         enabled: true
       })
-      roleList.value = res.records || []
+      roleList.value = (res as any).list || []
     } catch (error) {
       console.error('加载角色列表失败:', error)
       ElMessage.warning('加载角色列表失败')
